@@ -3,15 +3,16 @@ from flask import current_app
 from datetime import datetime
 from lxml import etree
 
-from . import db, request_headers, LiveTVCrawler
-from . import LiveTVSite, LiveTVChannel, LiveTVRoom, LiveTVChannelData, LiveTVRoomData
+from . import *
 
 import requests
+import copy
 
 CHANNEL_API = 'http://www.panda.tv/cate'
 ROOM_LIST_API = 'http://www.panda.tv/ajax_sort?classification={}&pageno={}&pagenum={}'
 ROOM_API = 'http://www.panda.tv/api_room?roomid={}'
-panda_headers = dict(request_headers, Host='www.panda.tv', Referer='http://www.panda.tv')
+panda_headers = copy.deepcopy(request_headers)
+panda_headers['Host'] = 'www.panda.tv'
 
 
 class PandaCrawler(LiveTVCrawler):
@@ -28,7 +29,7 @@ class PandaCrawler(LiveTVCrawler):
 
     def _channels(self, site):
         current_app.logger.info('调用频道接口:{}'.format(CHANNEL_API))
-        resp = self._get_response(CHANNEL_API, headers=panda_headers)
+        resp = requests.get(CHANNEL_API, headers=panda_headers)
         if resp.status_code != requests.codes.ok:
             current_app.logger.error('调用接口{}失败: 状态{}'.format(CHANNEL_API, resp.status_code))
             return False
@@ -72,7 +73,7 @@ class PandaCrawler(LiveTVCrawler):
         crawl_room_count = 0
         while True:
             requrl = ROOM_LIST_API.format(channel.short_name, crawl_pageno, crawl_pagenum)
-            resp = self._get_response(requrl, headers=panda_headers)
+            resp = requests.get(requrl, headers=panda_headers)
             if resp.status_code != requests.codes.ok:
                 current_app.logger.error('调用接口{}失败: 状态{}'.format(requrl, resp.status_code))
                 return False
@@ -122,7 +123,7 @@ class PandaCrawler(LiveTVCrawler):
 
     def _single_room(self, room):
         room_requrl = ROOM_API.format(room.officeid)
-        room_resp = self._get_response(room_requrl, headers=panda_headers)
+        room_resp = requests.get(room_requrl, headers=panda_headers)
         if room_resp.status_code != requests.codes.ok:
             current_app.logger.error('调用接口{}失败: 状态{}'.format(room_requrl, room_resp.status_code))
             return False
